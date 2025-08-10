@@ -6,6 +6,124 @@
     <title>Location Elimination Game</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Check if Leaflet CSS loaded properly
+        window.addEventListener('load', function() {
+            console.log('Page loaded, checking Leaflet...');
+            
+            // Check if Leaflet CSS is loaded
+            const leafletCSS = document.querySelector('link[href*="leaflet"]');
+            if (!leafletCSS) {
+                console.error('Leaflet CSS not found!');
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+                document.head.appendChild(link);
+            } else {
+                console.log('Leaflet CSS found');
+            }
+            
+            // Check if Leaflet JS is loaded
+            if (typeof L === 'undefined') {
+                console.error('Leaflet failed to load!');
+                // Try to reload Leaflet
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+                script.onload = function() {
+                    console.log('Leaflet reloaded successfully');
+                };
+                document.head.appendChild(script);
+            } else {
+                console.log('Leaflet loaded successfully');
+            }
+            
+            // Test map container
+            setTimeout(() => {
+                const mapContainer = document.getElementById('map');
+                if (mapContainer) {
+                    console.log('Map container found on page load:', mapContainer);
+                    console.log('Map container dimensions:', mapContainer.offsetWidth, 'x', mapContainer.offsetHeight);
+                    console.log('Map container style:', window.getComputedStyle(mapContainer));
+                } else {
+                    console.log('Map container not found on page load');
+                }
+            }, 1000);
+            
+                    // Add test function to global scope for debugging
+        window.testMapContainer = function() {
+            const mapContainer = document.getElementById('map');
+            if (mapContainer) {
+                console.log('=== MAP CONTAINER TEST ===');
+                console.log('Container element:', mapContainer);
+                console.log('Container dimensions:', mapContainer.offsetWidth, 'x', mapContainer.offsetHeight);
+                console.log('Container style:', window.getComputedStyle(mapContainer));
+                console.log('Container HTML:', mapContainer.innerHTML);
+                console.log('Container parent:', mapContainer.parentElement);
+                console.log('Container parent style:', mapContainer.parentElement ? window.getComputedStyle(mapContainer.parentElement) : 'No parent');
+                
+                // Test if we can add content
+                const testDiv = document.createElement('div');
+                testDiv.textContent = 'TEST - ' + new Date().toLocaleTimeString();
+                testDiv.style.cssText = 'background: red; color: white; padding: 10px; margin: 10px;';
+                mapContainer.appendChild(testDiv);
+                console.log('Test div added successfully');
+                
+                // Remove test div after 3 seconds
+                setTimeout(() => {
+                    if (testDiv.parentNode) {
+                        testDiv.remove();
+                        console.log('Test div removed');
+                    }
+                }, 3000);
+            } else {
+                console.log('Map container not found!');
+            }
+        };
+        
+        // Add test function for map initialization
+        window.testMapInit = function() {
+            console.log('=== TESTING MAP INITIALIZATION ===');
+            console.log('Leaflet loaded:', typeof L !== 'undefined');
+            if (typeof L !== 'undefined') {
+                console.log('Leaflet version:', L.version);
+                
+                const mapContainer = document.getElementById('map');
+                if (mapContainer) {
+                    console.log('Map container found, attempting to create map...');
+                    try {
+                        // Clear container
+                        mapContainer.innerHTML = '';
+
+                        const testMap = L.map('map').setView([51.505, -0.09], 13); // London coords & zoom 13
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap);
+
+                        
+                        
+                        // Add tile layer
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap);
+                        console.log('Tile layer added successfully');
+                        
+                        // Clean up after 5 seconds
+                        setTimeout(() => {
+                            if (testMap) {
+                                testMap.remove();
+                                console.log('Test map removed');
+                            }
+                        }, 5000);
+                        
+                    } catch (error) {
+                        console.error('Error creating test map:', error);
+                    }
+                } else {
+                    console.log('Map container not found!');
+                }
+            } else {
+                console.log('Leaflet not loaded!');
+            }
+        };
+    });
+    </script>
+
     <style>
         * {
             margin: 0;
@@ -24,6 +142,125 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
+        }
+
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .login-container h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input {
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .login-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .switch-form {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .switch-form button {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.9rem;
+        }
+
+        .switch-form button:hover {
+            color: #764ba2;
+        }
+
+        .game-container {
+            display: none;
+        }
+
+        .user-info {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            margin-bottom: 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .user-info .username {
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 5px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            margin-left: 15px;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
         .header {
@@ -158,6 +395,17 @@
             width: 100%;
             border-radius: 10px;
             border: 2px solid #e0e0e0;
+            background-color: #f0f0f0;
+            position: relative;
+            overflow: hidden;
+            min-height: 400px;
+            min-width: 100%;
+        }
+        
+        .leaflet-container {
+            height: 100% !important;
+            width: 100% !important;
+            min-height: 400px !important;
         }
 
         .friends-section {
@@ -175,7 +423,7 @@
             text-align: center;
         }
 
-        .elimination-note {
+        .friends-section .elimination-note {
             margin-bottom: 15px;
             background: #e3f2fd;
             border-color: #2196f3;
@@ -196,12 +444,41 @@
             margin-bottom: 10px;
             border-radius: 10px;
             border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .friend-item.online {
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+
+        .friend-item.offline {
+            border-left-color: #6c757d;
+            background: #f8f9fa;
+            opacity: 0.7;
         }
 
         .friend-name {
             font-weight: bold;
             color: #667eea;
             margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+
+        .friend-status {
+            font-size: 0.9rem;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .friend-item.online .friend-status {
+            color: #28a745;
+        }
+
+        .friend-item.offline .friend-status {
+            color: #6c757d;
         }
 
         .friend-location {
@@ -221,6 +498,52 @@
             padding: 20px;
             color: #666;
             font-style: italic;
+        }
+
+        .squad-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 30px;
+        }
+
+        .squad-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .squad-leader {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #856404;
+            padding: 10px 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: bold;
+            border: 1px solid #ffc107;
+        }
+
+        .squad-status {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            color: #1976d2;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+
+        .no-squad {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+            margin-bottom: 15px;
         }
 
         .target-section {
@@ -349,70 +672,309 @@
             #map {
                 height: 300px;
             }
+
+            .login-container {
+                margin: 50px auto;
+                padding: 30px 20px;
+            }
         }
+
+        #map {
+    width: 100%;
+    height: 500px;
+}
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🎯 Location Elimination Game</h1>
-            <p>Set your name, track friends, eliminate targets with confirmation, and dominate the battlefield!</p>
-            <div class="elimination-note">
-                👤 <strong>Player Names:</strong> Set your own name when starting the game and add friends with names to know exactly who you're eliminating!
+    <!-- Login Container -->
+    <div class="login-container" id="loginContainer">
+        <h1>🎯 Location Game</h1>
+        
+        <!-- Login Form -->
+        <form class="login-form" id="loginForm">
+            <div class="form-group">
+                <label for="loginUsername">Username</label>
+                <input type="text" id="loginUsername" required>
             </div>
+            <div class="form-group">
+                <label for="loginPassword">Password</label>
+                <input type="password" id="loginPassword" required>
+            </div>
+            <button type="submit" class="login-btn">🚀 Login</button>
+        </form>
+        
+        <div class="switch-form">
+            <button type="button" onclick="showRegisterForm()">Don't have an account? Register</button>
         </div>
+    </div>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>👥 Players</h3>
-                <div class="number" id="playerCount">0</div>
+    <!-- Register Form -->
+    <div class="login-container" id="registerContainer" style="display: none;">
+        <h1>🎯 Create Account</h1>
+        
+        <form class="login-form" id="registerForm">
+            <div class="form-group">
+                <label for="registerUsername">Username</label>
+                <input type="text" id="registerUsername" required>
             </div>
-            <div class="stat-card">
-                <h3>🎯 Targets</h3>
-                <div class="number" id="targetCount">0</div>
+            <div class="form-group">
+                <label for="registerPassword">Password</label>
+                <input type="password" id="registerPassword" required>
             </div>
-            <div class="stat-card">
-                <h3>💀 Eliminations</h3>
-                <div class="number" id="eliminationCount">0</div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" required>
             </div>
+            <button type="submit" class="login-btn">✨ Create Account</button>
+        </form>
+        
+        <div class="switch-form">
+            <button type="button" onclick="showLoginForm()">Already have an account? Login</button>
         </div>
+    </div>
 
-        <div class="controls">
-            <button id="startGame" class="btn btn-primary">🚀 Start Game</button>
-            <button id="addFriend" class="btn btn-secondary">👥 Add Friend</button>
-        </div>
-
-        <div class="game-content">
-            <div class="map-section">
-                <h3>🗺️ Live Map</h3>
-                <div id="map"></div>
+    <!-- Game Container -->
+    <div class="game-container" id="gameContainer">
+        <div class="container">
+            <div class="user-info">
+                Welcome, <span class="username" id="currentUsername"></span>!
+                <button class="logout-btn" onclick="logout()">Logout</button>
             </div>
 
-            <div class="friends-section">
-                <h3>👥 Your Friends</h3>
+            <div class="header">
+                <h1>🎯 Location Elimination Game</h1>
+                <p>Create squads, track friends worldwide, eliminate targets with confirmation, and dominate the battlefield!</p>
                 <div class="elimination-note">
-                    👤 <strong>Player Names:</strong> Add friends with names to track them and assign targets
+                    ⚔️ <strong>Squad System:</strong> Create a squad with your friends before starting the game. All squad members must be ready to begin!
                 </div>
                 <div class="elimination-note">
-                    🎯 <strong>Elimination System:</strong> Click the eliminate button and your target must confirm by typing "CONFIRM"
-                </div>
-                <div class="friends-list" id="friendsList">
-                    <div class="no-friends">No friends added yet</div>
+                    🌍 <strong>Worldwide:</strong> This game can be played anywhere in the world!
                 </div>
             </div>
-        </div>
 
-        <div class="target-section">
-            <h3>🎯 Your Target</h3>
-            <div class="target-info" id="targetInfo">
-                <div class="no-target">No target assigned yet</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>⚔️ Squad Members</h3>
+                    <div class="number" id="playerCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>🎯 Targets</h3>
+                    <div class="number" id="targetCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>💀 Eliminations</h3>
+                    <div class="number" id="eliminationCount">0</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="startGame" class="btn btn-primary">🚀 Start Game</button>
+                <button id="addFriend" class="btn btn-secondary">👥 Add Friend</button>
+                <button id="createSquad" class="btn btn-secondary">⚔️ Create Squad</button>
+            </div>
+
+            <div class="game-content">
+                <div class="map-section">
+                    <h3>🗺️ Live Map</h3>
+                    <div id="map">
+                        <div id="mapLoading" style="text-align: center; padding: 20px; color: #666;">
+                            Loading map...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="friends-section">
+                    <h3>👥 Your Friends</h3>
+                    <div class="elimination-note">
+                        👤 <strong>Add Friends:</strong> Add friends to your friends list first, then create a squad with them
+                    </div>
+                    <div class="elimination-note">
+                        ⚔️ <strong>Squad Creation:</strong> Create a squad with your friends to start playing together
+                    </div>
+                    <div class="elimination-note">
+                        🎯 <strong>Elimination System:</strong> Click the eliminate button and your target must confirm by typing "CONFIRM"
+                    </div>
+                    <div class="friends-list" id="friendsList">
+                        <div class="no-friends">No friends added yet</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="squad-section" id="squadSection">
+                <!-- Squad info will be rendered here -->
+            </div>
+
+            <div class="target-section">
+                <h3>🎯 Your Target</h3>
+                <div class="target-info" id="targetInfo">
+                    <div class="no-target">No target assigned yet</div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        class LocationGame {
+        class UserManager {
             constructor() {
+                this.currentUser = null;
+                this.users = new Map();
+                this.loadUsers();
+            }
+
+            loadUsers() {
+                const savedUsers = localStorage.getItem('locationGameUsers');
+                if (savedUsers) {
+                    this.users = new Map(JSON.parse(savedUsers));
+                }
+            }
+
+            saveUsers() {
+                localStorage.setItem('locationGameUsers', JSON.stringify(Array.from(this.users.entries())));
+            }
+
+            register(username, password) {
+                if (this.users.has(username)) {
+                    return { success: false, message: 'Username already exists!' };
+                }
+
+                const user = {
+                    username: username,
+                    password: password,
+                    friends: new Set(),
+                    squad: new Set(), // New: squad members
+                    squadLeader: null, // New: who created the squad
+                    players: new Map(),
+                    targets: new Map(),
+                    eliminations: 0,
+                    gameActive: false,
+                    currentPlayer: null,
+                    isReady: false
+                };
+
+                this.users.set(username, user);
+                this.saveUsers();
+                return { success: true, message: 'Account created successfully!' };
+            }
+
+            login(username, password) {
+                const user = this.users.get(username);
+                if (!user || user.password !== password) {
+                    return { success: false, message: 'Invalid username or password!' };
+                }
+
+                this.currentUser = user;
+                return { success: true, message: 'Login successful!' };
+            }
+
+            logout() {
+                this.currentUser = null;
+            }
+
+            getCurrentUser() {
+                return this.currentUser;
+            }
+
+            addFriend(username, friendUsername) {
+                const user = this.users.get(username);
+                const friend = this.users.get(friendUsername);
+                
+                if (!friend) {
+                    return { success: false, message: 'User not found!' };
+                }
+                
+                if (username === friendUsername) {
+                    return { success: false, message: 'You cannot add yourself as a friend!' };
+                }
+                
+                if (user.friends.has(friendUsername)) {
+                    return { success: false, message: 'Already friends with this user!' };
+                }
+                
+                // Add each other as friends (mutual friendship)
+                user.friends.add(friendUsername);
+                friend.friends.add(username);
+                
+                this.saveUsers();
+                return { success: true, message: `You are now friends with ${friendUsername}!` };
+            }
+
+            // New: Create or join a squad
+            createSquad(username, squadMembers) {
+                const user = this.users.get(username);
+                if (!user) {
+                    return { success: false, message: 'User not found!' };
+                }
+
+                // Check if all members are friends
+                for (const member of squadMembers) {
+                    if (!user.friends.has(member)) {
+                        return { success: false, message: `${member} is not your friend!` };
+                    }
+                }
+
+                // Create squad for all members
+                for (const member of squadMembers) {
+                    const memberUser = this.users.get(member);
+                    if (memberUser) {
+                        memberUser.squad = new Set([username, ...squadMembers]);
+                        memberUser.squadLeader = username;
+                    }
+                }
+                user.squad = new Set([username, ...squadMembers]);
+                user.squadLeader = username;
+
+                this.saveUsers();
+                return { success: true, message: `Squad created with ${squadMembers.length} members!` };
+            }
+
+            // New: Get squad information
+            getSquadInfo(username) {
+                const user = this.users.get(username);
+                if (!user || !user.squad) return null;
+
+                const squadMembers = Array.from(user.squad).map(memberUsername => {
+                    const member = this.users.get(memberUsername);
+                    return {
+                        username: memberUsername,
+                        isOnline: member.gameActive,
+                        isReady: member.isReady,
+                        isLeader: memberUsername === user.squadLeader
+                    };
+                });
+
+                return {
+                    members: squadMembers,
+                    leader: user.squadLeader,
+                    size: user.squad.size
+                };
+            }
+
+            // New: Check if all squad members are ready
+            isSquadReady(username) {
+                const squadInfo = this.getSquadInfo(username);
+                if (!squadInfo) return false;
+
+                return squadInfo.members.every(member => member.isReady);
+            }
+
+            getFriendsList(username) {
+                const user = this.users.get(username);
+                if (!user) return [];
+                
+                return Array.from(user.friends).map(friendUsername => {
+                    const friend = this.users.get(friendUsername);
+                    return {
+                        username: friendUsername,
+                        isOnline: friend.gameActive,
+                        isReady: friend.isReady
+                    };
+                });
+            }
+        }
+
+        class LocationGame {
+            constructor(userManager) {
+                this.userManager = userManager;
                 this.players = new Map();
                 this.targets = new Map();
                 this.currentPlayer = null;
@@ -421,51 +983,157 @@
                 this.watchId = null;
                 this.map = null;
                 this.markers = new Map();
+                this.friends = [];
+                this.squadInfo = null; // New: squad information
                 
                 this.initializeEventListeners();
                 this.loadGameState();
                 this.initializeMap();
+                this.loadFriends();
+                this.loadSquadInfo(); // New: load squad info
             }
 
             initializeMap() {
-                // Initialize the map centered on a default location
-                this.map = L.map('map').setView([0, 0], 2);
+                console.log('Initializing map...');
                 
-                // Add OpenStreetMap tiles
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(this.map);
+                // Prevent multiple initializations
+                if (this.map) {
+                    console.log('Map already exists, skipping initialization');
+                    return;
+                }
+                
+                // Check if Leaflet is loaded
+                if (typeof L === 'undefined') {
+                    console.error('Leaflet library not loaded!');
+                    return;
+                }
+                
+                // Check if map container exists
+                const mapContainer = document.getElementById('map');
+                if (!mapContainer) {
+                    console.error('Map container not found!');
+                    return;
+                }
+                
+                // Simple map center - Europe
+                const mapCenter = [50.0, 20.0];
+                
+                try {
+                    // Clear container
+                    mapContainer.innerHTML = '';
+                    
+                    // Create the map
+                    if (this.map) {
+    this.map.remove();
+}
+
+                    this.map = L.map('map', {
+                        center: mapCenter,
+                        zoom: 6,
+                        zoomControl: true,
+                        attributionControl: true
+                    });
+                    
+                    // Add tile layer
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors',
+                        maxZoom: 18,
+                        minZoom: 2
+                    }).addTo(this.map);
+                    
+                    // Set zoom levels
+                    this.map.setMinZoom(2);
+                    this.map.setMaxZoom(18);
+                    
+                    console.log('Map initialized successfully');
+                    
+                    // Force map refresh
+                    setTimeout(() => {
+                        if (this.map) {
+                            this.map.invalidateSize();
+                        }
+                    }, 100);
+                    
+                } catch (error) {
+                    console.error('Error initializing map:', error);
+                    this.showMapError('Failed to initialize map: ' + error.message);
+                }
             }
+            
+            showMapError(errorMessage) {
+                const mapContainer = document.getElementById('map');
+                if (mapContainer) {
+                    mapContainer.innerHTML = `
+                        <div style="text-align: center; padding: 20px; color: #ff0000;">
+                            <h4>Map Error</h4>
+                            <p>${errorMessage}</p>
+                            <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">Refresh Page</button>
+                        </div>
+                    `;
+                }
+            }
+
+            // Map is simplified - no border overlay needed
 
             initializeEventListeners() {
                 document.getElementById('startGame').addEventListener('click', () => this.startGame());
                 document.getElementById('addFriend').addEventListener('click', () => this.addFriend());
+                // New: Add squad button event listener
+                document.getElementById('createSquad').addEventListener('click', () => this.createSquad());
             }
 
             loadGameState() {
-                const savedState = localStorage.getItem('locationGameState');
-                if (savedState) {
-                    const state = JSON.parse(savedState);
-                    this.players = new Map(state.players || []);
-                    this.targets = new Map(state.targets || []);
-                    this.eliminations = state.eliminations || 0;
-                    this.gameActive = state.gameActive || false;
-                    this.currentPlayer = state.currentPlayer || null;
+                const user = this.userManager.getCurrentUser();
+                if (user) {
+                    this.players = new Map(user.players ? Object.entries(user.players) : []);
+                    this.targets = new Map(user.targets ? Object.entries(user.targets) : []);
+                    this.eliminations = user.eliminations || 0;
+                    this.gameActive = user.gameActive || false;
+                    this.currentPlayer = user.currentPlayer || null;
                 }
             }
 
             saveGameState() {
-                const state = {
-                    players: Array.from(this.players.entries()),
-                    targets: Array.from(this.targets.entries()),
-                    eliminations: this.eliminations,
-                    gameActive: this.gameActive,
-                    currentPlayer: this.currentPlayer
-                };
-                localStorage.setItem('locationGameState', JSON.stringify(state));
+                const user = this.userManager.getCurrentUser();
+                if (user) {
+                    user.players = Array.from(this.players.entries());
+                    user.targets = Array.from(this.targets.entries());
+                    user.eliminations = this.eliminations;
+                    user.gameActive = this.gameActive;
+                    user.currentPlayer = this.currentPlayer;
+                    user.isReady = this.gameActive;
+                    this.userManager.saveUsers();
+                }
+            }
+
+            loadFriends() {
+                const user = this.userManager.getCurrentUser();
+                if (user) {
+                    this.friends = this.userManager.getFriendsList(user.username);
+                }
+            }
+
+            // New: Load squad information
+            loadSquadInfo() {
+                const user = this.userManager.getCurrentUser();
+                if (user) {
+                    this.squadInfo = this.userManager.getSquadInfo(user.username);
+                }
             }
 
             async startGame() {
+                // Check if we have a squad
+                if (!this.squadInfo || this.squadInfo.size === 0) {
+                    this.showNotification('You need to create or join a squad before starting the game!', 'error');
+                    return;
+                }
+
+                // Check if all squad members are ready
+                if (!this.userManager.isSquadReady(this.userManager.getCurrentUser().username)) {
+                    this.showNotification('Wait for all squad members to be ready before starting!', 'error');
+                    return;
+                }
+
                 const playerName = prompt('Enter your name to start the game:');
                 if (!playerName || playerName.trim() === '') {
                     this.showNotification('Game cancelled. Please enter a name.', 'error');
@@ -474,6 +1142,8 @@
 
                 try {
                     const position = await this.getCurrentPosition();
+                    
+                    // Location check passed - can play anywhere
                     
                     this.currentPlayer = {
                         name: playerName,
@@ -492,8 +1162,14 @@
                     
                     this.showNotification(`Game started for ${playerName}! Your location is being tracked.`, 'success');
                     
-                    // Center map on current player
-                    this.map.setView([this.currentPlayer.lat, this.currentPlayer.lon], 13);
+                    // Update map view if map is available
+                    if (this.map && typeof this.map.setView === 'function') {
+                        try {
+                            this.map.setView([this.currentPlayer.lat, this.currentPlayer.lon], 10);
+                        } catch (error) {
+                            console.error('Error setting map view:', error);
+                        }
+                    }
                     
                 } catch (error) {
                     this.showNotification('Failed to get your location. Please check location permissions.', 'error');
@@ -541,44 +1217,80 @@
             }
 
             addFriend() {
-                const friendName = prompt('Enter friend name:');
-                if (!friendName || friendName.trim() === '') return;
+                const friendUsername = prompt('Enter your friend\'s username:');
+                if (!friendUsername || friendUsername.trim() === '') return;
 
-                const friend = {
-                    name: friendName,
-                    lat: this.generateRandomLocation().lat,
-                    lon: this.generateRandomLocation().lon,
-                    lastSeen: new Date().toISOString()
-                };
+                const currentUser = this.userManager.getCurrentUser();
+                const result = this.userManager.addFriend(currentUser.username, friendUsername);
+                
+                if (result.success) {
+                    this.showNotification(result.message, 'success');
+                    this.loadFriends();
+                    this.renderFriendsList();
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
+            }
 
-                this.players.set(friendName, friend);
-                this.saveGameState();
-                this.renderFriendsList();
-                this.renderTargetInfo();
-                this.updateMap();
-                this.assignTargets();
+            // New: Create or join a squad
+            createSquad() {
+                const currentUser = this.userManager.getCurrentUser();
+                if (!currentUser) return;
+
+                if (this.squadInfo && this.squadInfo.size > 0) {
+                    this.showNotification('You are already in a squad!', 'error');
+                    return;
+                }
+
+                const friendUsernames = prompt('Enter friend usernames separated by commas (e.g., friend1,friend2):');
+                if (!friendUsernames || friendUsernames.trim() === '') return;
+
+                const squadMembers = friendUsernames.split(',').map(name => name.trim()).filter(name => name);
+                if (squadMembers.length === 0) {
+                    this.showNotification('Please enter valid friend usernames!', 'error');
+                    return;
+                }
+
+                const result = this.userManager.createSquad(currentUser.username, squadMembers);
+                if (result.success) {
+                    this.showNotification(result.message, 'success');
+                    this.loadSquadInfo();
+                    this.renderSquadInfo();
+                    this.updateUI();
+                } else {
+                    this.showNotification(result.message, 'error');
+                }
             }
 
             generateRandomLocation() {
-                // Generate random location within reasonable bounds
-                const lat = (Math.random() - 0.5) * 180; // -90 to 90
-                const lon = (Math.random() - 0.5) * 360; // -180 to 180
+                // Generate random location anywhere in the world
+                const lat = -90 + Math.random() * 180;
+                const lon = -180 + Math.random() * 360;
                 return { lat, lon };
             }
 
             assignTargets() {
                 this.targets.clear();
                 
-                const availableTargets = Array.from(this.players.values())
-                    .filter(player => player !== this.currentPlayer);
-                
-                if (availableTargets.length > 0) {
-                    const shuffled = availableTargets.sort(() => Math.random() - 0.5);
-                    const target = shuffled[0];
+                // Only assign targets if we have squad members who are also playing
+                if (this.squadInfo) {
+                    const availableTargets = this.squadInfo.members
+                        .filter(member => member.isOnline && member.username !== this.userManager.getCurrentUser().username)
+                        .map(member => ({
+                            name: member.username,
+                            lat: this.generateRandomLocation().lat,
+                            lon: this.generateRandomLocation().lon,
+                            lastSeen: new Date().toISOString()
+                        }));
                     
-                    if (this.currentPlayer) {
-                        this.targets.set(this.currentPlayer.name, target);
-                        this.showNotification(`${this.currentPlayer.name}, your target is ${target.name}!`, 'success');
+                    if (availableTargets.length > 0) {
+                        const shuffled = availableTargets.sort(() => Math.random() - 0.5);
+                        const target = shuffled[0];
+                        
+                        if (this.currentPlayer) {
+                            this.targets.set(this.currentPlayer.name, target);
+                            this.showNotification(`${this.currentPlayer.name}, your target is ${target.name}!`, 'success');
+                        }
                     }
                 }
                 
@@ -597,12 +1309,10 @@
                 
                 if (confirmation === 'CONFIRM') {
                     this.eliminations++;
-                    this.players.delete(target.name);
                     this.targets.delete(this.currentPlayer.name);
                     
                     this.showNotification(`Target ${target.name} eliminated!`, 'success');
                     
-                    // Try to assign a new target
                     this.assignTargets();
                     this.updateUI();
                     this.updateMap();
@@ -612,7 +1322,7 @@
             }
 
             calculateDistance(lat1, lon1, lat2, lon2) {
-                const R = 6371; // Earth's radius in kilometers
+                const R = 6371;
                 const dLat = this.deg2rad(lat2 - lat1);
                 const dLon = this.deg2rad(lon2 - lon1);
                 const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -628,35 +1338,71 @@
 
             renderFriendsList() {
                 const friendsList = document.getElementById('friendsList');
-                const currentPlayer = this.currentPlayer;
                 
-                if (this.players.size === 0 || (this.players.size === 1 && this.players.has('current'))) {
+                if (this.friends.length === 0) {
                     friendsList.innerHTML = '<div class="no-friends">No friends added yet</div>';
                     return;
                 }
 
                 let html = '';
-                this.players.forEach((friend, key) => {
-                    if (key === 'current') return;
-                    
-                    let distance = 'Unknown';
-                    if (currentPlayer) {
-                        distance = this.calculateDistance(
-                            currentPlayer.lat, currentPlayer.lon,
-                            friend.lat, friend.lon
-                        ).toFixed(2) + ' km';
-                    }
+                this.friends.forEach(friend => {
+                    const statusClass = friend.isOnline ? 'online' : 'offline';
+                    const statusText = friend.isOnline ? '🟢 Online' : '🔴 Offline';
+                    const readyText = friend.isReady ? '✅ Ready' : '⏳ Not Ready';
                     
                     html += `
-                        <div class="friend-item">
-                            <div class="friend-name">${friend.name}</div>
-                            <div class="friend-location">📍 ${friend.lat.toFixed(4)}, ${friend.lon.toFixed(4)}</div>
-                            <div class="friend-distance">📏 Distance: ${distance}</div>
+                        <div class="friend-item ${statusClass}">
+                            <div class="friend-name">${friend.username}</div>
+                            <div class="friend-status">${statusText} | ${readyText}</div>
                         </div>
                     `;
                 });
                 
                 friendsList.innerHTML = html;
+            }
+
+            // New: Render squad information
+            renderSquadInfo() {
+                const squadSection = document.getElementById('squadSection');
+                if (!squadSection) return;
+
+                if (!this.squadInfo || this.squadInfo.size === 0) {
+                    squadSection.innerHTML = `
+                        <h3>⚔️ Your Squad</h3>
+                        <div class="no-squad">No squad created yet</div>
+                        <button class="btn btn-secondary" onclick="game.createSquad()">Create Squad</button>
+                    `;
+                    return;
+                }
+
+                let html = `
+                    <h3>⚔️ Your Squad (${this.squadInfo.size} members)</h3>
+                    <div class="squad-leader">👑 Leader: ${this.squadInfo.leader}</div>
+                `;
+
+                this.squadInfo.members.forEach(member => {
+                    const statusClass = member.isOnline ? 'online' : 'offline';
+                    const statusText = member.isOnline ? '🟢 Online' : '🔴 Offline';
+                    const readyText = member.isReady ? '✅ Ready' : '⏳ Not Ready';
+                    const leaderIcon = member.isLeader ? '👑' : '';
+                    
+                    html += `
+                        <div class="friend-item ${statusClass}">
+                            <div class="friend-name">${leaderIcon} ${member.username}</div>
+                            <div class="friend-status">${statusText} | ${readyText}</div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    <div class="squad-status">
+                        ${this.userManager.isSquadReady(this.userManager.getCurrentUser().username) 
+                            ? '🟢 All squad members are ready!' 
+                            : '🟡 Waiting for squad members to be ready...'}
+                    </div>
+                `;
+
+                squadSection.innerHTML = html;
             }
 
             renderTargetInfo() {
@@ -687,7 +1433,7 @@
             }
 
             updateStats() {
-                document.getElementById('playerCount').textContent = this.players.size;
+                document.getElementById('playerCount').textContent = this.squadInfo ? this.squadInfo.size : 0;
                 document.getElementById('targetCount').textContent = this.targets.size;
                 document.getElementById('eliminationCount').textContent = this.eliminations;
             }
@@ -699,46 +1445,51 @@
                 this.markers.forEach(marker => marker.remove());
                 this.markers.clear();
 
-                // Add markers for all players
-                this.players.forEach((player, key) => {
-                    const isCurrentPlayer = key === 'current';
-                    const isTarget = this.currentPlayer && this.targets.has(this.currentPlayer.name) && 
-                                   this.targets.get(this.currentPlayer.name) === player;
-                    
-                    let markerColor = '#667eea'; // Default blue
-                    let markerIcon = '👤';
-                    
-                    if (isCurrentPlayer) {
-                        markerColor = '#28a745'; // Green for current player
-                        markerIcon = '🎯';
-                    } else if (isTarget) {
-                        markerColor = '#dc3545'; // Red for target
-                        markerIcon = '💀';
-                    }
-
-                    const marker = L.marker([player.lat, player.lon])
+                // Only show current player and targets on map
+                if (this.currentPlayer) {
+                    const currentMarker = L.marker([this.currentPlayer.lat, this.currentPlayer.lon])
                         .addTo(this.map)
                         .bindPopup(`
-                            <strong>${player.name}</strong><br>
-                            📍 ${player.lat.toFixed(4)}, ${player.lon.toFixed(4)}<br>
-                            🕒 Last seen: ${new Date(player.lastSeen).toLocaleTimeString()}
+                            <strong>${this.currentPlayer.name} (You)</strong><br>
+                            📍 ${this.currentPlayer.lat.toFixed(4)}, ${this.currentPlayer.lon.toFixed(4)}<br>
+                            🕒 Last seen: ${new Date(this.currentPlayer.lastSeen).toLocaleTimeString()}
                         `);
 
-                    // Create custom icon
-                    const customIcon = L.divIcon({
-                        html: `<div style="background-color: ${markerColor}; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${markerIcon}</div>`,
+                    const currentIcon = L.divIcon({
+                        html: `<div style="background-color: #28a745; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">🎯</div>`,
                         className: 'custom-marker',
                         iconSize: [30, 30],
                         iconAnchor: [15, 15]
                     });
 
-                    marker.setIcon(customIcon);
-                    this.markers.set(key, marker);
+                    currentMarker.setIcon(currentIcon);
+                    this.markers.set('current', currentMarker);
+                }
+
+                // Add target markers
+                this.targets.forEach((target, playerName) => {
+                    const targetMarker = L.marker([target.lat, target.lon])
+                        .addTo(this.map)
+                        .bindPopup(`
+                            <strong>${target.name} (Target)</strong><br>
+                            📍 ${target.lat.toFixed(4)}, ${target.lon.toFixed(4)}<br>
+                            🕒 Last seen: ${new Date(target.lastSeen).toLocaleTimeString()}
+                        `);
+
+                    const targetIcon = L.divIcon({
+                        html: `<div style="background-color: #dc3545; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">💀</div>`,
+                        className: 'custom-marker',
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    });
+
+                    targetMarker.setIcon(targetIcon);
+                    this.markers.set(`target_${playerName}`, targetMarker);
                 });
 
                 // Fit map to show all markers
-                if (this.players.size > 0) {
-                    const bounds = L.latLngBounds(Array.from(this.players.values()).map(p => [p.lat, p.lon]));
+                if (this.markers.size > 0) {
+                    const bounds = L.latLngBounds(Array.from(this.markers.values()).map(marker => marker.getLatLng()));
                     this.map.fitBounds(bounds, { padding: [20, 20] });
                 }
             }
@@ -746,11 +1497,12 @@
             updateUI() {
                 this.updateStats();
                 this.renderFriendsList();
+                this.renderSquadInfo(); // New: render squad info
                 this.renderTargetInfo();
                 
-                // Update button states
-                document.getElementById('startGame').disabled = this.gameActive;
-                document.getElementById('addFriend').disabled = !this.gameActive;
+                document.getElementById('startGame').disabled = this.gameActive || !this.squadInfo || this.squadInfo.size === 0;
+                document.getElementById('addFriend').disabled = this.gameActive;
+                document.getElementById('createSquad').disabled = this.gameActive || (this.squadInfo && this.squadInfo.size > 0);
             }
 
             showNotification(message, type) {
@@ -766,16 +1518,160 @@
             }
         }
 
-        const game = new LocationGame();
+        // Global variables
+        let userManager;
+        let game;
 
-        // Update UI every 5 seconds if game is active
-        setInterval(() => {
-            if (game.gameActive) {
-                game.renderFriendsList();
-                game.renderTargetInfo();
-                game.updateMap();
+        // Form switching functions
+        function showRegisterForm() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('registerContainer').style.display = 'block';
+        }
+
+        function showLoginForm() {
+            document.getElementById('registerContainer').style.display = 'none';
+            document.getElementById('loginContainer').style.display = 'block';
+        }
+
+        // Logout function
+        function logout() {
+            userManager.logout();
+            document.getElementById('gameContainer').style.display = 'none';
+            document.getElementById('loginContainer').style.display = 'block';
+            showLoginForm();
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            userManager = new UserManager();
+            
+            // Check if user is already logged in
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                const user = userManager.users.get(savedUser);
+                if (user) {
+                    userManager.currentUser = user;
+                    showGame();
+                }
             }
-        }, 5000);
+
+            // Login form handler
+            document.getElementById('loginForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const username = document.getElementById('loginUsername').value;
+                const password = document.getElementById('loginPassword').value;
+                
+                const result = userManager.login(username, password);
+                if (result.success) {
+                    localStorage.setItem('currentUser', username);
+                    showGame();
+                    showNotification(result.message, 'success');
+                } else {
+                    showNotification(result.message, 'error');
+                }
+            });
+
+            // Register form handler
+            document.getElementById('registerForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const username = document.getElementById('registerUsername').value;
+                const password = document.getElementById('registerPassword').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                
+                if (password !== confirmPassword) {
+                    showNotification('Passwords do not match!', 'error');
+                    return;
+                }
+                
+                if (password.length < 4) {
+                    showNotification('Password must be at least 4 characters!', 'error');
+                    return;
+                }
+                
+                const result = userManager.register(username, password);
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    showLoginForm();
+                    document.getElementById('registerForm').reset();
+                } else {
+                    showNotification(result.message, 'error');
+                }
+            });
+        });
+
+        function showGame() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('registerContainer').style.display = 'none';
+            document.getElementById('gameContainer').style.display = 'block';
+            
+            // Update username display
+            const user = userManager.getCurrentUser();
+            document.getElementById('currentUsername').textContent = user.username;
+            
+            // Initialize game with a longer delay to ensure DOM is fully ready
+            setTimeout(() => {
+                try {
+                    game = new LocationGame(userManager);
+                    console.log('Game initialized successfully');
+                    
+                    // Add a manual map refresh button
+                    const mapSection = document.querySelector('.map-section');
+                    if (mapSection) {
+                        const refreshButton = document.createElement('button');
+                        refreshButton.textContent = '🔄 Refresh Map';
+                        refreshButton.style.cssText = 'margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;';
+                        refreshButton.onclick = () => {
+                            console.log('Manual map refresh requested');
+                            if (game && game.map) {
+                                game.map.invalidateSize();
+                                console.log('Map size invalidated manually');
+                            } else if (game) {
+                                console.log('Reinitializing map manually');
+                                game.initializeMap();
+                            }
+                        };
+                        mapSection.appendChild(refreshButton);
+                    }
+                } catch (error) {
+                    console.error('Error initializing game:', error);
+                    // Show error message
+                    const mapContainer = document.getElementById('map');
+                    if (mapContainer) {
+                        mapContainer.innerHTML = `
+                            <div style="text-align: center; padding: 20px; color: #ff0000;">
+                                Failed to initialize game: ${error.message}<br>
+                                <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">Refresh Page</button>
+                            </div>
+                        `;
+                    }
+                }
+            }, 500);
+            
+            // Update UI every 5 seconds if game is active
+            setInterval(() => {
+                if (game && game.gameActive) {
+                    try {
+                        game.renderFriendsList();
+                        game.renderSquadInfo(); // New: update squad info
+                        game.renderTargetInfo();
+                        game.updateMap();
+                    } catch (error) {
+                        console.error('Error updating UI:', error);
+                    }
+                }
+            }, 5000);
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 4000);
+        }
     </script>
 </body>
 </html>
