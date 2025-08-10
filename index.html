@@ -95,9 +95,6 @@
                         mapContainer.innerHTML = '';
 
                         const testMap = L.map('map').setView([51.505, -0.09], 13); // London coords & zoom 13
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap);
-
-                        
                         
                         // Add tile layer
                         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap);
@@ -119,6 +116,24 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
                 }
             } else {
                 console.log('Leaflet not loaded!');
+            }
+        };
+        
+        // Add function to check map status
+        window.checkMapStatus = function() {
+            console.log('=== MAP STATUS CHECK ===');
+            if (typeof game !== 'undefined' && game) {
+                console.log('Game instance:', game);
+                console.log('Map instance:', game.map);
+                console.log('Map container:', document.getElementById('map'));
+                
+                if (game.map) {
+                    console.log('Map center:', game.map.getCenter());
+                    console.log('Map zoom:', game.map.getZoom());
+                    console.log('Map size:', game.map.getSize());
+                }
+            } else {
+                console.log('Game not initialized yet');
             }
         };
     });
@@ -680,9 +695,9 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
         }
 
         #map {
-    width: 100%;
-    height: 500px;
-}
+            width: 100%;
+            height: 500px;
+        }
     </style>
 </head>
 <body>
@@ -745,7 +760,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
                 <h1>🎯 Location Elimination Game</h1>
                 <p>Create squads, track friends worldwide, eliminate targets with confirmation, and dominate the battlefield!</p>
                 <div class="elimination-note">
-                    ⚔️ <strong>Squad System:</strong> Create a squad with your friends before starting the game. All squad members must be ready to begin!
+                    ⚔ <strong>Squad System:</strong> Create a squad with your friends before starting the game. All squad members must be ready to begin!
                 </div>
                 <div class="elimination-note">
                     🌍 <strong>Worldwide:</strong> This game can be played anywhere in the world!
@@ -754,7 +769,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
 
             <div class="stats-grid">
                 <div class="stat-card">
-                    <h3>⚔️ Squad Members</h3>
+                    <h3>⚔ Squad Members</h3>
                     <div class="number" id="playerCount">0</div>
                 </div>
                 <div class="stat-card">
@@ -770,12 +785,12 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
             <div class="controls">
                 <button id="startGame" class="btn btn-primary">🚀 Start Game</button>
                 <button id="addFriend" class="btn btn-secondary">👥 Add Friend</button>
-                <button id="createSquad" class="btn btn-secondary">⚔️ Create Squad</button>
+                <button id="createSquad" class="btn btn-secondary">⚔ Create Squad</button>
             </div>
 
             <div class="game-content">
                 <div class="map-section">
-                    <h3>🗺️ Live Map</h3>
+                    <h3>🗺 Live Map</h3>
                     <div id="map">
                         <div id="mapLoading" style="text-align: center; padding: 20px; color: #666;">
                             Loading map...
@@ -789,7 +804,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
                         👤 <strong>Add Friends:</strong> Add friends to your friends list first, then create a squad with them
                     </div>
                     <div class="elimination-note">
-                        ⚔️ <strong>Squad Creation:</strong> Create a squad with your friends to start playing together
+                        ⚔ <strong>Squad Creation:</strong> Create a squad with your friends to start playing together
                     </div>
                     <div class="elimination-note">
                         🎯 <strong>Elimination System:</strong> Click the eliminate button and your target must confirm by typing "CONFIRM"
@@ -876,10 +891,9 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
 
             addFriend(username, friendUsername) {
                 const user = this.users.get(username);
-                const friend = this.users.get(friendUsername);
                 
-                if (!friend) {
-                    return { success: false, message: 'User not found!' };
+                if (!user) {
+                    return { success: false, message: 'Current user not found!' };
                 }
                 
                 if (username === friendUsername) {
@@ -888,6 +902,26 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
                 
                 if (user.friends.has(friendUsername)) {
                     return { success: false, message: 'Already friends with this user!' };
+                }
+                
+                // Check if friend exists, if not, create a placeholder entry
+                let friend = this.users.get(friendUsername);
+                if (!friend) {
+                    // Create a placeholder user entry for the friend
+                    friend = {
+                        username: friendUsername,
+                        password: '', // Will be set when they register
+                        friends: new Set(),
+                        squad: new Set(),
+                        squadLeader: null,
+                        players: new Map(),
+                        targets: new Map(),
+                        eliminations: 0,
+                        gameActive: false,
+                        currentPlayer: null,
+                        isReady: false
+                    };
+                    this.users.set(friendUsername, friend);
                 }
                 
                 // Add each other as friends (mutual friendship)
@@ -988,9 +1022,13 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
                 
                 this.initializeEventListeners();
                 this.loadGameState();
-                this.initializeMap();
                 this.loadFriends();
                 this.loadSquadInfo(); // New: load squad info
+                
+                // Initialize map with a delay to ensure DOM is ready
+                setTimeout(() => {
+                    this.initializeMap();
+                }, 100);
             }
 
             initializeMap() {
@@ -1005,6 +1043,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
                 // Check if Leaflet is loaded
                 if (typeof L === 'undefined') {
                     console.error('Leaflet library not loaded!');
+                    this.showMapError('Leaflet library not loaded. Please refresh the page.');
                     return;
                 }
                 
@@ -1012,6 +1051,23 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
                 const mapContainer = document.getElementById('map');
                 if (!mapContainer) {
                     console.error('Map container not found!');
+                    this.showMapError('Map container not found. Please refresh the page.');
+                    return;
+                }
+                
+                // Check if map container is visible and has dimensions
+                const mapSection = mapContainer.closest('.map-section');
+                const containerStyle = window.getComputedStyle(mapContainer);
+                
+                if (mapSection && window.getComputedStyle(mapSection).display === 'none') {
+                    console.log('Map section is hidden, waiting for visibility...');
+                    setTimeout(() => this.initializeMap(), 100);
+                    return;
+                }
+                
+                if (mapContainer.offsetWidth === 0 || mapContainer.offsetHeight === 0) {
+                    console.log('Map container has no dimensions, waiting...');
+                    setTimeout(() => this.initializeMap(), 200);
                     return;
                 }
                 
@@ -1023,10 +1079,6 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
                     mapContainer.innerHTML = '';
                     
                     // Create the map
-                    if (this.map) {
-    this.map.remove();
-}
-
                     this.map = L.map('map', {
                         center: mapCenter,
                         zoom: 6,
@@ -1047,12 +1099,24 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
                     
                     console.log('Map initialized successfully');
                     
-                    // Force map refresh
+                    // Force map refresh with longer delay to ensure container is ready
                     setTimeout(() => {
                         if (this.map) {
                             this.map.invalidateSize();
+                            console.log('Map size invalidated');
+                            
+                            // Add a small marker to test if map is working
+                            const testMarker = L.marker(mapCenter).addTo(this.map);
+                            testMarker.bindPopup('🗺️ Map is working!').openPopup();
+                            
+                            // Remove test marker after 3 seconds
+                            setTimeout(() => {
+                                if (testMarker && this.map) {
+                                    this.map.removeLayer(testMarker);
+                                }
+                            }, 3000);
                         }
-                    }, 100);
+                    }, 500);
                     
                 } catch (error) {
                     console.error('Error initializing map:', error);
@@ -1065,9 +1129,10 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
                 if (mapContainer) {
                     mapContainer.innerHTML = `
                         <div style="text-align: center; padding: 20px; color: #ff0000;">
-                            <h4>Map Error</h4>
+                            <h4>🗺️ Map Error</h4>
                             <p>${errorMessage}</p>
-                            <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">Refresh Page</button>
+                            <button onclick="this.parentElement.remove(); game.initializeMap();" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">🔄 Retry Map</button>
+                            <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">🔄 Refresh Page</button>
                         </div>
                     `;
                 }
@@ -1368,7 +1433,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
 
                 if (!this.squadInfo || this.squadInfo.size === 0) {
                     squadSection.innerHTML = `
-                        <h3>⚔️ Your Squad</h3>
+                        <h3>⚔ Your Squad</h3>
                         <div class="no-squad">No squad created yet</div>
                         <button class="btn btn-secondary" onclick="game.createSquad()">Create Squad</button>
                     `;
@@ -1376,7 +1441,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
                 }
 
                 let html = `
-                    <h3>⚔️ Your Squad (${this.squadInfo.size} members)</h3>
+                    <h3>⚔ Your Squad (${this.squadInfo.size} members)</h3>
                     <div class="squad-leader">👑 Leader: ${this.squadInfo.leader}</div>
                 `;
 
@@ -1439,7 +1504,11 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
             }
 
             updateMap() {
-                if (!this.map) return;
+                if (!this.map) {
+                    console.log('Map not initialized, attempting to initialize...');
+                    this.initializeMap();
+                    return;
+                }
 
                 // Clear existing markers
                 this.markers.forEach(marker => marker.remove());
@@ -1456,7 +1525,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
                         `);
 
                     const currentIcon = L.divIcon({
-                        html: `<div style="background-color: #28a745; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">🎯</div>`,
+                        html: '<div style="background-color: #28a745; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">🎯</div>',
                         className: 'custom-marker',
                         iconSize: [30, 30],
                         iconAnchor: [15, 15]
@@ -1477,7 +1546,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
                         `);
 
                     const targetIcon = L.divIcon({
-                        html: `<div style="background-color: #dc3545; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">💀</div>`,
+                        html: '<div style="background-color: #dc3545; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">💀</div>',
                         className: 'custom-marker',
                         iconSize: [30, 30],
                         iconAnchor: [15, 15]
@@ -1624,6 +1693,14 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(testMap)
                             if (game && game.map) {
                                 game.map.invalidateSize();
                                 console.log('Map size invalidated manually');
+                                
+                                // Force a complete map refresh
+                                setTimeout(() => {
+                                    if (game && game.map) {
+                                        game.updateMap();
+                                        console.log('Map updated after manual refresh');
+                                    }
+                                }, 100);
                             } else if (game) {
                                 console.log('Reinitializing map manually');
                                 game.initializeMap();
