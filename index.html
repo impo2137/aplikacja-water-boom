@@ -136,6 +136,37 @@
                 console.log('Game not initialized yet');
             }
         };
+
+        // Add function to test friend system
+        window.testFriendSystem = function() {
+            console.log('=== FRIEND SYSTEM TEST ===');
+            if (typeof game !== 'undefined' && game) {
+                console.log('Game instance:', game);
+                console.log('UserManager:', game.userManager);
+                console.log('Current user:', game.userManager.getCurrentUser());
+                console.log('All users:', game.userManager.users);
+                console.log('Friends list:', game.friends);
+                
+                // Test adding a friend
+                console.log('Testing addFriend method...');
+                if (game.userManager.getCurrentUser()) {
+                    console.log('Current user found, can test addFriend');
+                } else {
+                    console.log('No current user, cannot test addFriend');
+                }
+            } else {
+                console.log('Game not initialized yet');
+            }
+        };
+
+        // Function to clear localStorage and reset data
+        window.resetGameData = function() {
+            if (confirm('This will clear all game data including users, friends, and squads. Are you sure?')) {
+                localStorage.removeItem('locationGameUsers');
+                localStorage.removeItem('locationGameState');
+                alert('Game data cleared. Please refresh the page.');
+            }
+        };
     });
     </script>
 
@@ -375,6 +406,16 @@
         .btn-secondary:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(240, 147, 251, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.4);
         }
 
         .btn:disabled {
@@ -698,6 +739,72 @@
             width: 100%;
             height: 500px;
         }
+
+        /* Custom Modal Styles */
+        .custom-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .modal-content h3 {
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 1.5rem;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .modal-buttons .btn {
+            min-width: 100px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -786,6 +893,7 @@
                 <button id="startGame" class="btn btn-primary">🚀 Start Game</button>
                 <button id="addFriend" class="btn btn-secondary">👥 Add Friend</button>
                 <button id="createSquad" class="btn btn-secondary">⚔ Create Squad</button>
+                <button id="resetData" class="btn btn-danger" onclick="resetGameData()">🗑 Reset Data</button>
             </div>
 
             <div class="game-content">
@@ -838,17 +946,93 @@
 
             loadUsers() {
                 const savedUsers = localStorage.getItem('locationGameUsers');
-                if (savedUsers) {
-                    this.users = new Map(JSON.parse(savedUsers));
+                this.users = new Map();
+                if (!savedUsers) return;
+
+                let parsed;
+                try {
+                    parsed = JSON.parse(savedUsers);
+                } catch (e) {
+                    console.error('[loadUsers] Failed to parse saved users, clearing storage', e);
+                    localStorage.removeItem('locationGameUsers');
+                    return;
+                }
+
+                // Normalize to entries: [[username, userData], ...]
+                let entries = [];
+                if (Array.isArray(parsed)) {
+                    // Could be entries or array of user objects
+                    if (parsed.length > 0 && Array.isArray(parsed[0]) && typeof parsed[0][0] === 'string') {
+                        entries = parsed;
+                    } else {
+                        entries = parsed
+                            .filter(u => u && typeof u === 'object' && typeof u.username === 'string')
+                            .map(u => [u.username, u]);
+                    }
+                } else if (parsed && typeof parsed === 'object') {
+                    entries = Object.entries(parsed);
+                }
+
+                for (const [username, raw] of entries) {
+                    const userData = raw || {};
+
+                    const toArray = (val) => {
+                        if (Array.isArray(val)) return val;
+                        if (val && typeof val === 'object') return Array.isArray(val.data) ? val.data : Object.values(val);
+                        return [];
+                    };
+                    const toPairs = (val) => {
+                        if (Array.isArray(val)) return val; // assume [[k,v], ...]
+                        if (val && typeof val === 'object') return Object.entries(val);
+                        return [];
+                    };
+
+                    const friendsArr = toArray(userData.friends);
+                    const squadArr = toArray(userData.squad);
+                    const playersArr = toPairs(userData.players);
+                    const targetsArr = toPairs(userData.targets);
+
+                    const user = {
+                        ...userData,
+                        friends: new Set(friendsArr),
+                        squad: new Set(squadArr),
+                        players: new Map(playersArr),
+                        targets: new Map(targetsArr)
+                    };
+                    this.users.set(username, user);
                 }
             }
 
             saveUsers() {
-                localStorage.setItem('locationGameUsers', JSON.stringify(Array.from(this.users.entries())));
+                // Convert Sets and Maps to arrays before saving
+                const usersToSave = Array.from(this.users.entries()).map(([username, user]) => {
+                    return [username, {
+                        ...user,
+                        friends: Array.from(user.friends || []),
+                        squad: Array.from(user.squad || []),
+                        players: Array.from(user.players || []),
+                        targets: Array.from(user.targets || [])
+                    }];
+                });
+                localStorage.setItem('locationGameUsers', JSON.stringify(usersToSave));
             }
 
             register(username, password) {
+                // If username exists as a placeholder (no password), upgrade it; otherwise block duplicates
                 if (this.users.has(username)) {
+                    const existing = this.users.get(username);
+                    // Treat empty string or undefined password as placeholder
+                    if (!existing.password) {
+                        existing.password = password;
+                        // Ensure structures are instantiated
+                        if (!(existing.friends instanceof Set)) existing.friends = new Set(existing.friends || []);
+                        if (!(existing.squad instanceof Set)) existing.squad = new Set(existing.squad || []);
+                        if (!(existing.players instanceof Map)) existing.players = new Map(existing.players || []);
+                        if (!(existing.targets instanceof Map)) existing.targets = new Map(existing.targets || []);
+                        this.users.set(username, existing);
+                        this.saveUsers();
+                        return { success: true, message: 'Account activated successfully!' };
+                    }
                     return { success: false, message: 'Username already exists!' };
                 }
 
@@ -865,6 +1049,38 @@
                     currentPlayer: null,
                     isReady: false
                 };
+                
+                // Ensure all Set and Map objects are properly instantiated
+                if (!(user.friends instanceof Set)) {
+                    user.friends = new Set();
+                }
+                if (!(user.squad instanceof Set)) {
+                    user.squad = new Set();
+                }
+                if (!(user.players instanceof Map)) {
+                    user.players = new Map();
+                }
+                if (!(user.targets instanceof Map)) {
+                    user.targets = new Map();
+                }
+                
+                // Double-check that all objects are properly instantiated
+                if (!(user.friends instanceof Set)) {
+                    console.error('Failed to create friends Set');
+                    user.friends = new Set();
+                }
+                if (!(user.squad instanceof Set)) {
+                    console.error('Failed to create squad Set');
+                    user.squad = new Set();
+                }
+                if (!(user.players instanceof Map)) {
+                    console.error('Failed to create players Map');
+                    user.players = new Map();
+                }
+                if (!(user.targets instanceof Map)) {
+                    console.error('Failed to create targets Map');
+                    user.targets = new Map();
+                }
 
                 this.users.set(username, user);
                 this.saveUsers();
@@ -875,6 +1091,42 @@
                 const user = this.users.get(username);
                 if (!user || user.password !== password) {
                     return { success: false, message: 'Invalid username or password!' };
+                }
+
+                // Ensure all Set and Map objects are properly instantiated
+                if (!(user.friends instanceof Set)) {
+                    console.log('Converting friends to Set in login');
+                    user.friends = new Set(user.friends || []);
+                }
+                if (!(user.squad instanceof Set)) {
+                    console.log('Converting squad to Set in login');
+                    user.squad = new Set(user.squad || []);
+                }
+                if (!(user.players instanceof Map)) {
+                    console.log('Converting players to Map in login');
+                    user.players = new Map(user.players || []);
+                }
+                if (!(user.targets instanceof Map)) {
+                    console.log('Converting targets to Map in login');
+                    user.targets = new Map(user.targets || []);
+                }
+                
+                // Double-check that all objects are properly instantiated
+                if (!(user.friends instanceof Set)) {
+                    console.error('Failed to convert friends to Set in login');
+                    user.friends = new Set();
+                }
+                if (!(user.squad instanceof Set)) {
+                    console.error('Failed to convert squad to Set in login');
+                    user.squad = new Set();
+                }
+                if (!(user.players instanceof Map)) {
+                    console.error('Failed to convert players to Map in login');
+                    user.players = new Map();
+                }
+                if (!(user.targets instanceof Map)) {
+                    console.error('Failed to convert targets to Map in login');
+                    user.targets = new Map();
                 }
 
                 this.currentUser = user;
@@ -890,23 +1142,70 @@
             }
 
             addFriend(username, friendUsername) {
+                console.log('UserManager.addFriend called with:', username, friendUsername);
+                
                 const user = this.users.get(username);
+                console.log('Current user found:', user);
                 
                 if (!user) {
+                    console.log('Current user not found');
                     return { success: false, message: 'Current user not found!' };
                 }
                 
                 if (username === friendUsername) {
+                    console.log('Cannot add self as friend');
                     return { success: false, message: 'You cannot add yourself as a friend!' };
                 }
                 
+                // Ensure friends is a Set object
+                if (!(user.friends instanceof Set)) {
+                    console.log('Friends is not a Set, converting...');
+                    user.friends = new Set(user.friends || []);
+                }
+                
+                // Double-check that all Set and Map objects are properly instantiated for the user
+                if (!(user.squad instanceof Set)) {
+                    console.log('Converting user.squad to Set in addFriend');
+                    user.squad = new Set(user.squad || []);
+                }
+                if (!(user.players instanceof Map)) {
+                    console.log('Converting user.players to Map in addFriend');
+                    user.players = new Map(user.players || []);
+                }
+                if (!(user.targets instanceof Map)) {
+                    console.log('Converting user.targets to Map in addFriend');
+                    user.targets = new Map(user.targets || []);
+                }
+                
+                // Triple-check that all objects are properly instantiated
+                if (!(user.friends instanceof Set)) {
+                    console.error('Failed to convert user.friends to Set in addFriend');
+                    user.friends = new Set();
+                }
+                if (!(user.squad instanceof Set)) {
+                    console.error('Failed to convert user.squad to Set in addFriend');
+                    user.squad = new Set();
+                }
+                if (!(user.players instanceof Map)) {
+                    console.error('Failed to convert user.players to Map in addFriend');
+                    user.players = new Map();
+                }
+                if (!(user.targets instanceof Map)) {
+                    console.error('Failed to convert user.targets to Map in addFriend');
+                    user.targets = new Map();
+                }
+                
                 if (user.friends.has(friendUsername)) {
+                    console.log('Already friends');
                     return { success: false, message: 'Already friends with this user!' };
                 }
                 
                 // Check if friend exists, if not, create a placeholder entry
                 let friend = this.users.get(friendUsername);
+                console.log('Friend found:', friend);
+                
                 if (!friend) {
+                    console.log('Creating placeholder friend entry');
                     // Create a placeholder user entry for the friend
                     friend = {
                         username: friendUsername,
@@ -922,13 +1221,73 @@
                         isReady: false
                     };
                     this.users.set(friendUsername, friend);
+                    console.log('Placeholder friend created');
+                                } else {
+                    // Ensure friend's Set and Map objects are properly instantiated
+                    if (!(friend.friends instanceof Set)) {
+                        console.log('Converting friend.friends to Set');
+                        friend.friends = new Set(friend.friends || []);
+                    }
+                    if (!(friend.squad instanceof Set)) {
+                        console.log('Converting friend.squad to Set');
+                        friend.squad = new Set(friend.squad || []);
+                    }
+                    if (!(friend.players instanceof Map)) {
+                        console.log('Converting friend.players to Map');
+                        friend.players = new Map(friend.players || []);
+                    }
+                    if (!(friend.targets instanceof Map)) {
+                        console.log('Converting friend.targets to Map');
+                        friend.targets = new Map(friend.targets || []);
+                    }
+                    
+                    // Double-check that all objects are properly instantiated
+                    if (!(friend.friends instanceof Set)) {
+                        console.error('Failed to convert friend.friends to Set');
+                        friend.friends = new Set();
+                    }
+                    if (!(friend.squad instanceof Set)) {
+                        console.error('Failed to convert friend.squad to Set');
+                        friend.squad = new Set();
+                    }
+                    if (!(friend.players instanceof Map)) {
+                        console.error('Failed to convert friend.players to Map');
+                        friend.players = new Map();
+                    }
+                    if (!(friend.targets instanceof Map)) {
+                        console.error('Failed to convert friend.targets to Map');
+                        friend.targets = new Map();
+                    }
                 }
                 
                 // Add each other as friends (mutual friendship)
                 user.friends.add(friendUsername);
                 friend.friends.add(username);
+                console.log('Friendship established');
+                
+                // Ensure all Set and Map objects are properly instantiated for both users
+                if (!(user.squad instanceof Set)) {
+                    user.squad = new Set(user.squad || []);
+                }
+                if (!(user.players instanceof Map)) {
+                    user.players = new Map(user.players || []);
+                }
+                if (!(user.targets instanceof Map)) {
+                    user.targets = new Map(user.targets || []);
+                }
+                
+                if (!(friend.squad instanceof Set)) {
+                    friend.squad = new Set(friend.squad || []);
+                }
+                if (!(friend.players instanceof Map)) {
+                    friend.players = new Map(friend.players || []);
+                }
+                if (!(friend.targets instanceof Map)) {
+                    friend.targets = new Map(friend.targets || []);
+                }
                 
                 this.saveUsers();
+                console.log('Users saved to localStorage');
                 return { success: true, message: `You are now friends with ${friendUsername}!` };
             }
 
@@ -939,6 +1298,26 @@
                     return { success: false, message: 'User not found!' };
                 }
 
+                // Ensure friends is a Set object
+                if (!(user.friends instanceof Set)) {
+                    console.log('Friends is not a Set in createSquad, converting...');
+                    user.friends = new Set(user.friends || []);
+                }
+                
+                // Double-check that all Set and Map objects are properly instantiated for the user
+                if (!(user.squad instanceof Set)) {
+                    console.log('Converting user.squad to Set in createSquad');
+                    user.squad = new Set(user.squad || []);
+                }
+                if (!(user.players instanceof Map)) {
+                    console.log('Converting user.players to Map in createSquad');
+                    user.players = new Map(user.players || []);
+                }
+                if (!(user.targets instanceof Map)) {
+                    console.log('Converting user.targets to Map in createSquad');
+                    user.targets = new Map(user.targets || []);
+                }
+                
                 // Check if all members are friends
                 for (const member of squadMembers) {
                     if (!user.friends.has(member)) {
@@ -950,12 +1329,78 @@
                 for (const member of squadMembers) {
                     const memberUser = this.users.get(member);
                     if (memberUser) {
+                        // Ensure member's Set and Map objects are properly instantiated
+                        if (!(memberUser.friends instanceof Set)) {
+                            memberUser.friends = new Set(memberUser.friends || []);
+                        }
+                        if (!(memberUser.squad instanceof Set)) {
+                            memberUser.squad = new Set(memberUser.squad || []);
+                        }
+                        if (!(memberUser.players instanceof Map)) {
+                            memberUser.players = new Map(memberUser.players || []);
+                        }
+                        if (!(memberUser.targets instanceof Map)) {
+                            memberUser.targets = new Map(memberUser.targets || []);
+                        }
+                        
+                        // Double-check that all objects are properly instantiated
+                        if (!(memberUser.friends instanceof Set)) {
+                            console.error('Failed to convert memberUser.friends to Set');
+                            memberUser.friends = new Set();
+                        }
+                        if (!(memberUser.squad instanceof Set)) {
+                            console.error('Failed to convert memberUser.squad to Set');
+                            memberUser.squad = new Set();
+                        }
+                        if (!(memberUser.players instanceof Map)) {
+                            console.error('Failed to convert memberUser.players to Map');
+                            memberUser.players = new Map();
+                        }
+                        if (!(memberUser.targets instanceof Map)) {
+                            console.error('Failed to convert memberUser.targets to Map');
+                            memberUser.targets = new Map();
+                        }
+                        
                         memberUser.squad = new Set([username, ...squadMembers]);
                         memberUser.squadLeader = username;
                     }
                 }
+                
+                // Ensure user's squad is a Set object
+                if (!(user.squad instanceof Set)) {
+                    user.squad = new Set();
+                }
                 user.squad = new Set([username, ...squadMembers]);
                 user.squadLeader = username;
+                
+                // Ensure all other Set and Map objects are properly instantiated for the user
+                if (!(user.friends instanceof Set)) {
+                    user.friends = new Set(user.friends || []);
+                }
+                if (!(user.players instanceof Map)) {
+                    user.players = new Map(user.players || []);
+                }
+                if (!(user.targets instanceof Map)) {
+                    user.targets = new Map(user.targets || []);
+                }
+                
+                // Triple-check that all objects are properly instantiated
+                if (!(user.friends instanceof Set)) {
+                    console.error('Failed to convert user.friends to Set in createSquad');
+                    user.friends = new Set();
+                }
+                if (!(user.squad instanceof Set)) {
+                    console.error('Failed to convert user.squad to Set in createSquad');
+                    user.squad = new Set();
+                }
+                if (!(user.players instanceof Map)) {
+                    console.error('Failed to convert user.players to Map in createSquad');
+                    user.players = new Map();
+                }
+                if (!(user.targets instanceof Map)) {
+                    console.error('Failed to convert user.targets to Map in createSquad');
+                    user.targets = new Map();
+                }
 
                 this.saveUsers();
                 return { success: true, message: `Squad created with ${squadMembers.length} members!` };
@@ -966,14 +1411,93 @@
                 const user = this.users.get(username);
                 if (!user || !user.squad) return null;
 
+                // Ensure squad is a Set object
+                if (!(user.squad instanceof Set)) {
+                    console.log('Squad is not a Set in getSquadInfo, converting...');
+                    user.squad = new Set(user.squad || []);
+                }
+                
+                // Double-check that all Set and Map objects are properly instantiated for the user
+                if (!(user.friends instanceof Set)) {
+                    console.log('Converting user.friends to Set in getSquadInfo');
+                    user.friends = new Set(user.friends || []);
+                }
+                if (!(user.players instanceof Map)) {
+                    console.log('Converting user.players to Map in getSquadInfo');
+                    user.players = new Map(user.players || []);
+                }
+                if (!(user.targets instanceof Map)) {
+                    console.log('Converting user.targets to Map in getSquadInfo');
+                    user.targets = new Map(user.targets || []);
+                }
+                
+                // Triple-check that all objects are properly instantiated
+                if (!(user.friends instanceof Set)) {
+                    console.error('Failed to convert user.friends to Set in getSquadInfo');
+                    user.friends = new Set();
+                }
+                if (!(user.squad instanceof Set)) {
+                    console.error('Failed to convert user.squad to Set in getSquadInfo');
+                    user.squad = new Set();
+                }
+                if (!(user.players instanceof Map)) {
+                    console.error('Failed to convert user.players to Map in getSquadInfo');
+                    user.players = new Map();
+                }
+                if (!(user.targets instanceof Map)) {
+                    console.error('Failed to convert user.targets to Map in getSquadInfo');
+                    user.targets = new Map();
+                }
+
                 const squadMembers = Array.from(user.squad).map(memberUsername => {
                     const member = this.users.get(memberUsername);
-                    return {
-                        username: memberUsername,
-                        isOnline: member.gameActive,
-                        isReady: member.isReady,
-                        isLeader: memberUsername === user.squadLeader
-                    };
+                    if (member) {
+                        // Ensure member's Set and Map objects are properly instantiated
+                        if (!(member.friends instanceof Set)) {
+                            member.friends = new Set(member.friends || []);
+                        }
+                        if (!(member.squad instanceof Set)) {
+                            member.squad = new Set(member.squad || []);
+                        }
+                        if (!(member.players instanceof Map)) {
+                            member.players = new Map(member.players || []);
+                        }
+                        if (!(member.targets instanceof Map)) {
+                            member.targets = new Map(member.targets || []);
+                        }
+                        
+                        // Double-check that all objects are properly instantiated
+                        if (!(member.friends instanceof Set)) {
+                            console.error('Failed to convert member.friends to Set in getSquadInfo');
+                            member.friends = new Set();
+                        }
+                        if (!(member.squad instanceof Set)) {
+                            console.error('Failed to convert member.squad to Set in getSquadInfo');
+                            member.squad = new Set();
+                        }
+                        if (!(member.players instanceof Map)) {
+                            console.error('Failed to convert member.players to Map in getSquadInfo');
+                            member.players = new Map();
+                        }
+                        if (!(member.targets instanceof Map)) {
+                            console.error('Failed to convert member.targets to Map in getSquadInfo');
+                            member.targets = new Map();
+                        }
+                        
+                        return {
+                            username: memberUsername,
+                            isOnline: member.gameActive,
+                            isReady: member.isReady,
+                            isLeader: memberUsername === user.squadLeader
+                        };
+                    } else {
+                        return {
+                            username: memberUsername,
+                            isOnline: false,
+                            isReady: false,
+                            isLeader: false
+                        };
+                    }
                 });
 
                 return {
@@ -995,13 +1519,91 @@
                 const user = this.users.get(username);
                 if (!user) return [];
                 
+                // Ensure friends is a Set object
+                if (!(user.friends instanceof Set)) {
+                    console.log('Friends is not a Set in getFriendsList, converting...');
+                    user.friends = new Set(user.friends || []);
+                }
+                
+                // Double-check that all Set and Map objects are properly instantiated for the user
+                if (!(user.squad instanceof Set)) {
+                    console.log('Converting user.squad to Set in getFriendsList');
+                    user.squad = new Set(user.squad || []);
+                }
+                if (!(user.players instanceof Map)) {
+                    console.log('Converting user.players to Map in getFriendsList');
+                    user.players = new Map(user.players || []);
+                }
+                if (!(user.targets instanceof Map)) {
+                    console.log('Converting user.targets to Map in getFriendsList');
+                    user.targets = new Map(user.targets || []);
+                }
+                
+                // Triple-check that all objects are properly instantiated
+                if (!(user.friends instanceof Set)) {
+                    console.error('Failed to convert user.friends to Set in getFriendsList');
+                    user.friends = new Set();
+                }
+                if (!(user.squad instanceof Set)) {
+                    console.error('Failed to convert user.squad to Set in getFriendsList');
+                    user.squad = new Set();
+                }
+                if (!(user.players instanceof Map)) {
+                    console.error('Failed to convert user.players to Map in getFriendsList');
+                    user.players = new Map();
+                }
+                if (!(user.targets instanceof Map)) {
+                    console.error('Failed to convert user.targets to Map in getFriendsList');
+                    user.targets = new Map();
+                }
+                
                 return Array.from(user.friends).map(friendUsername => {
                     const friend = this.users.get(friendUsername);
-                    return {
-                        username: friendUsername,
-                        isOnline: friend.gameActive,
-                        isReady: friend.isReady
-                    };
+                    if (friend) {
+                        // Ensure friend's Set and Map objects are properly instantiated
+                        if (!(friend.friends instanceof Set)) {
+                            friend.friends = new Set(friend.friends || []);
+                        }
+                        if (!(friend.squad instanceof Set)) {
+                            friend.squad = new Set(friend.squad || []);
+                        }
+                        if (!(friend.players instanceof Map)) {
+                            friend.players = new Map(friend.players || []);
+                        }
+                        if (!(friend.targets instanceof Map)) {
+                            friend.targets = new Map(friend.targets || []);
+                        }
+                        
+                        // Double-check that all objects are properly instantiated
+                        if (!(friend.friends instanceof Set)) {
+                            console.error('Failed to convert friend.friends to Set in getFriendsList');
+                            friend.friends = new Set();
+                        }
+                        if (!(friend.squad instanceof Set)) {
+                            console.error('Failed to convert friend.squad to Set in getFriendsList');
+                            friend.squad = new Set();
+                        }
+                        if (!(friend.players instanceof Map)) {
+                            console.error('Failed to convert friend.players to Map in getFriendsList');
+                            friend.players = new Map();
+                        }
+                        if (!(friend.targets instanceof Map)) {
+                            console.error('Failed to convert friend.targets to Map in getFriendsList');
+                            friend.targets = new Map();
+                        }
+                        
+                        return {
+                            username: friendUsername,
+                            isOnline: friend.gameActive,
+                            isReady: friend.isReady
+                        };
+                    } else {
+                        return {
+                            username: friendUsername,
+                            isOnline: false,
+                            isReady: false
+                        };
+                    }
                 });
             }
         }
@@ -1282,18 +1884,90 @@
             }
 
             addFriend() {
-                const friendUsername = prompt('Enter your friend\'s username:');
-                if (!friendUsername || friendUsername.trim() === '') return;
+                console.log('addFriend method called');
+                // Create custom modal instead of using prompt()
+                const modal = document.createElement('div');
+                modal.className = 'custom-modal';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <h3>👥 Add Friend</h3>
+                        <input type="text" id="friendUsernameInput" placeholder="Enter your friend's username" class="modal-input">
+                        <div class="modal-buttons">
+                            <button class="btn btn-secondary" id="cancelAddFriend">Cancel</button>
+                            <button class="btn btn-primary" id="confirmAddFriendBtn">Add Friend</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Add event listeners properly
+                const cancelBtn = modal.querySelector('#cancelAddFriend');
+                const confirmBtn = modal.querySelector('#confirmAddFriendBtn');
+                const input = modal.querySelector('#friendUsernameInput');
+                
+                cancelBtn.addEventListener('click', () => {
+                    modal.remove();
+                });
+                
+                confirmBtn.addEventListener('click', () => {
+                    this.confirmAddFriend();
+                });
+                
+                // Focus on input and handle Enter key
+                input.focus();
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.confirmAddFriend();
+                    }
+                });
+            }
+
+            confirmAddFriend() {
+                console.log('confirmAddFriend called');
+                
+                const input = document.getElementById('friendUsernameInput');
+                console.log('Input element found:', input);
+                
+                const friendUsername = input ? input.value.trim() : '';
+                console.log('Friend username input:', friendUsername);
+                
+                if (!friendUsername) {
+                    console.log('No username entered, showing error');
+                    this.showNotification('Please enter a username!', 'error');
+                    return;
+                }
 
                 const currentUser = this.userManager.getCurrentUser();
+                console.log('Current user:', currentUser);
+                
+                if (!currentUser) {
+                    console.log('No current user, showing error');
+                    this.showNotification('You must be logged in to add friends!', 'error');
+                    return;
+                }
+                
+                console.log('Calling userManager.addFriend with:', currentUser.username, friendUsername);
                 const result = this.userManager.addFriend(currentUser.username, friendUsername);
+                console.log('Add friend result:', result);
                 
                 if (result.success) {
+                    console.log('Friend added successfully, updating UI');
                     this.showNotification(result.message, 'success');
                     this.loadFriends();
                     this.renderFriendsList();
                 } else {
+                    console.log('Friend addition failed, showing error');
                     this.showNotification(result.message, 'error');
+                }
+                
+                // Remove modal
+                const modal = document.querySelector('.custom-modal');
+                if (modal) {
+                    console.log('Removing modal');
+                    modal.remove();
+                } else {
+                    console.log('Modal not found for removal');
                 }
             }
 
@@ -1307,8 +1981,52 @@
                     return;
                 }
 
-                const friendUsernames = prompt('Enter friend usernames separated by commas (e.g., friend1,friend2):');
-                if (!friendUsernames || friendUsernames.trim() === '') return;
+                // Create custom modal instead of using prompt()
+                const modal = document.createElement('div');
+                modal.className = 'custom-modal';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <h3>⚔ Create Squad</h3>
+                        <input type="text" id="squadMembersInput" placeholder="Enter friend usernames separated by commas (e.g., friend1,friend2)" class="modal-input">
+                        <div class="modal-buttons">
+                            <button class="btn btn-secondary" id="cancelCreateSquad">Cancel</button>
+                            <button class="btn btn-primary" id="confirmCreateSquadBtn">Create Squad</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Add event listeners properly
+                const cancelBtn = modal.querySelector('#cancelCreateSquad');
+                const confirmBtn = modal.querySelector('#confirmCreateSquadBtn');
+                const input = modal.querySelector('#squadMembersInput');
+                
+                cancelBtn.addEventListener('click', () => {
+                    modal.remove();
+                });
+                
+                confirmBtn.addEventListener('click', () => {
+                    this.confirmCreateSquad();
+                });
+                
+                // Focus on input and handle Enter key
+                input.focus();
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.confirmCreateSquad();
+                    }
+                });
+            }
+
+            confirmCreateSquad() {
+                const input = document.getElementById('squadMembersInput');
+                const friendUsernames = input ? input.value.trim() : '';
+                
+                if (!friendUsernames) {
+                    this.showNotification('Please enter friend usernames!', 'error');
+                    return;
+                }
 
                 const squadMembers = friendUsernames.split(',').map(name => name.trim()).filter(name => name);
                 if (squadMembers.length === 0) {
@@ -1316,6 +2034,7 @@
                     return;
                 }
 
+                const currentUser = this.userManager.getCurrentUser();
                 const result = this.userManager.createSquad(currentUser.username, squadMembers);
                 if (result.success) {
                     this.showNotification(result.message, 'success');
@@ -1324,6 +2043,12 @@
                     this.updateUI();
                 } else {
                     this.showNotification(result.message, 'error');
+                }
+                
+                // Remove modal
+                const modal = document.querySelector('.custom-modal');
+                if (modal) {
+                    modal.remove();
                 }
             }
 
@@ -1611,60 +2336,98 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            userManager = new UserManager();
-            
-            // Check if user is already logged in
-            const savedUser = localStorage.getItem('currentUser');
-            if (savedUser) {
-                const user = userManager.users.get(savedUser);
-                if (user) {
-                    userManager.currentUser = user;
-                    showGame();
+            try {
+                console.log('[INIT] DOMContentLoaded');
+                userManager = new UserManager();
+                console.log('[INIT] UserManager created', userManager);
+
+                // Check if user is already logged in
+                const savedUser = localStorage.getItem('currentUser');
+                console.log('[INIT] savedUser from localStorage:', savedUser);
+                if (savedUser) {
+                    const user = userManager.users.get(savedUser);
+                    console.log('[INIT] resolved saved user:', user);
+                    if (user) {
+                        userManager.currentUser = user;
+                        showGame();
+                    } else {
+                        // Clear stale saved user
+                        localStorage.removeItem('currentUser');
+                    }
                 }
+
+                // Login form handler
+                const loginForm = document.getElementById('loginForm');
+                if (!loginForm) {
+                    console.error('[LOGIN] loginForm not found');
+                } else {
+                    loginForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const usernameEl = document.getElementById('loginUsername');
+                        const passwordEl = document.getElementById('loginPassword');
+                        const username = usernameEl ? usernameEl.value : '';
+                        const password = passwordEl ? passwordEl.value : '';
+                        console.log('[LOGIN] submit', { username });
+
+                        try {
+                            const result = userManager.login(username, password);
+                            console.log('[LOGIN] result', result);
+                            if (result.success) {
+                                localStorage.setItem('currentUser', username);
+                                showGame();
+                                showNotification(result.message, 'success');
+                            } else {
+                                showNotification(result.message, 'error');
+                            }
+                        } catch (err) {
+                            console.error('[LOGIN] exception', err);
+                            showNotification('Login failed due to an unexpected error. See console.', 'error');
+                        }
+                    });
+                }
+
+                // Register form handler
+                const registerForm = document.getElementById('registerForm');
+                if (!registerForm) {
+                    console.error('[REGISTER] registerForm not found');
+                } else {
+                    registerForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const username = document.getElementById('registerUsername').value;
+                        const password = document.getElementById('registerPassword').value;
+                        const confirmPassword = document.getElementById('confirmPassword').value;
+                        console.log('[REGISTER] submit', { username });
+                        
+                        if (password !== confirmPassword) {
+                            showNotification('Passwords do not match!', 'error');
+                            return;
+                        }
+                        
+                        if (password.length < 4) {
+                            showNotification('Password must be at least 4 characters!', 'error');
+                            return;
+                        }
+                        
+                        try {
+                            const result = userManager.register(username, password);
+                            console.log('[REGISTER] result', result);
+                            if (result.success) {
+                                showNotification(result.message, 'success');
+                                showLoginForm();
+                                registerForm.reset();
+                            } else {
+                                showNotification(result.message, 'error');
+                            }
+                        } catch (err) {
+                            console.error('[REGISTER] exception', err);
+                            showNotification('Registration failed due to an unexpected error. See console.', 'error');
+                        }
+                    });
+                }
+            } catch (initErr) {
+                console.error('[INIT] exception during setup', initErr);
+                showNotification('App failed to initialize. See console.', 'error');
             }
-
-            // Login form handler
-            document.getElementById('loginForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                const username = document.getElementById('loginUsername').value;
-                const password = document.getElementById('loginPassword').value;
-                
-                const result = userManager.login(username, password);
-                if (result.success) {
-                    localStorage.setItem('currentUser', username);
-                    showGame();
-                    showNotification(result.message, 'success');
-                } else {
-                    showNotification(result.message, 'error');
-                }
-            });
-
-            // Register form handler
-            document.getElementById('registerForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                const username = document.getElementById('registerUsername').value;
-                const password = document.getElementById('registerPassword').value;
-                const confirmPassword = document.getElementById('confirmPassword').value;
-                
-                if (password !== confirmPassword) {
-                    showNotification('Passwords do not match!', 'error');
-                    return;
-                }
-                
-                if (password.length < 4) {
-                    showNotification('Password must be at least 4 characters!', 'error');
-                    return;
-                }
-                
-                const result = userManager.register(username, password);
-                if (result.success) {
-                    showNotification(result.message, 'success');
-                    showLoginForm();
-                    document.getElementById('registerForm').reset();
-                } else {
-                    showNotification(result.message, 'error');
-                }
-            });
         });
 
         function showGame() {
