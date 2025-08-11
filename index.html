@@ -942,6 +942,14 @@
                 this.currentUser = null;
                 this.users = new Map();
                 this.loadUsers();
+                // If Firebase is available, enable remote sync in the background
+                try {
+                    if (window && window.db && window._fs) {
+                        this.enableRemoteSync();
+                    }
+                } catch (e) {
+                    console.error('[REMOTE] Failed to enable remote sync', e);
+                }
             }
 
             loadUsers() {
@@ -1015,6 +1023,103 @@
                     }];
                 });
                 localStorage.setItem('locationGameUsers', JSON.stringify(usersToSave));
+            }
+
+            // --- Firebase bridging ---
+            serializeUser(user) {
+                return {
+                    username: user.username,
+                    password: user.password || '',
+                    friends: Array.from(user.friends || []),
+                    squad: Array.from(user.squad || []),
+                    squadLeader: user.squadLeader || null,
+                    players: Array.from(user.players || []),
+                    targets: Array.from(user.targets || []),
+                    eliminations: user.eliminations || 0,
+                    gameActive: !!user.gameActive,
+                    currentPlayer: user.currentPlayer || null,
+                    isReady: !!user.isReady,
+                    updatedAt: Date.now()
+                };
+            }
+
+            deserializeUser(data, fallbackUsername) {
+                const username = data.username || fallbackUsername || '';
+                return {
+                    username,
+                    password: data.password || '',
+                    friends: new Set(Array.isArray(data.friends) ? data.friends : []),
+                    squad: new Set(Array.isArray(data.squad) ? data.squad : []),
+                    squadLeader: data.squadLeader || null,
+                    players: new Map(Array.isArray(data.players) ? data.players : []),
+                    targets: new Map(Array.isArray(data.targets) ? data.targets : []),
+                    eliminations: Number(data.eliminations || 0),
+                    gameActive: !!data.gameActive,
+                    currentPlayer: data.currentPlayer || null,
+                    isReady: !!data.isReady
+                };
+            }
+
+            enableRemoteSync() {
+                try {
+                    if (!window.db || !window._fs) return;
+                    const { collection, onSnapshot } = window._fs;
+                    this._db = window.db;
+                    this._usersCol = collection(this._db, 'users');
+                    onSnapshot(this._usersCol, (snapshot) => {
+                        const next = new Map();
+                        snapshot.forEach((docSnap) => {
+                            const data = docSnap.data() || {};
+                            const user = this.deserializeUser(data, docSnap.id);
+                            if (!user.username) return;
+                            next.set(user.username, user);
+                        });
+                        if (next.size > 0) {
+                            this.users = next;
+                            this.saveUsers();
+                            // Nudge UI
+                            try {
+                                if (window.game) {
+                                    window.game.loadFriends();
+                                    window.game.loadSquadInfo();
+                                    window.game.renderFriendsList();
+                                    window.game.renderSquadInfo();
+                                    window.game.updateUI();
+                                }
+                            } catch (e) {
+                                console.warn('[REMOTE] UI refresh failed', e);
+                            }
+                        }
+                    }, (err) => console.error('[REMOTE] onSnapshot error', err));
+                } catch (e) {
+                    console.error('[REMOTE] enableRemoteSync error', e);
+                }
+            }
+
+            pushUserToRemote(username) {
+                try {
+                    if (!window.db || !window._fs) return Promise.resolve();
+                    const user = this.users.get(username);
+                    if (!user) return Promise.resolve();
+                    const { doc, setDoc } = window._fs;
+                    const ref = doc(window.db, 'users', username);
+                    const payload = this.serializeUser(user);
+                    return setDoc(ref, payload, { merge: true }).catch((e) => {
+                        console.error('[REMOTE] setDoc failed for', username, e);
+                    });
+                } catch (e) {
+                    console.error('[REMOTE] pushUserToRemote error', e);
+                    return Promise.resolve();
+                }
+            }
+
+            pushUsersToRemote(usernames) {
+                try {
+                    if (!Array.isArray(usernames)) return;
+                    usernames.forEach((u) => this.pushUserToRemote(u));
+                } catch (e) {
+                    console.error('[REMOTE] pushUsersToRemote error', e);
+                }
             }
 
             register(username, password) {
@@ -1287,6 +1392,7 @@
                 }
                 
                 this.saveUsers();
+                try { this.pushUsersToRemote([username, friendUsername]); } catch (e) { console.warn('[REMOTE] push addFriend failed', e); }
                 console.log('Users saved to localStorage');
                 return { success: true, message: `You are now friends with ${friendUsername}!` };
             }
@@ -1403,6 +1509,7 @@
                 }
 
                 this.saveUsers();
+                try { this.pushUsersToRemote([username, ...squadMembers]); } catch (e) { console.warn('[REMOTE] push createSquad failed', e); }
                 return { success: true, message: `Squad created with ${squadMembers.length} members!` };
             }
 
@@ -2542,7 +2649,7 @@
     </script>
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-      import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+      import { getFirestore, collection, doc, setDoc, onSnapshot, getDocs, getDoc, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
       // Firebase config copied from your console
       const firebaseConfig = {
@@ -2558,6 +2665,8 @@
       const app = initializeApp(firebaseConfig);
       window.firebaseApp = app;
       window.db = getFirestore(app);
+      // Expose Firestore helpers for non-module scripts
+      window._fs = { collection, doc, setDoc, onSnapshot, getDocs, getDoc, updateDoc, arrayUnion, arrayRemove };
       console.log('[Firebase] initialized');
     </script>
 </body>
