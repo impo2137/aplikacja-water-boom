@@ -2017,6 +2017,28 @@
                 }
             }
 
+            triggerStorageSync() {
+                // Force a storage event to notify other tabs/windows of data changes
+                try {
+                    const currentData = localStorage.getItem('locationGameUsers');
+                    localStorage.setItem('locationGameUsers', currentData);
+                    console.log('Storage sync triggered for squad changes');
+                } catch (error) {
+                    console.error('Error triggering storage sync:', error);
+                }
+            }
+
+            refreshSquadInfo() {
+                // Manually refresh squad information
+                console.log('Manually refreshing squad info...');
+                this.loadSquadInfo();
+                this.loadFriends();
+                this.renderSquadInfo();
+                this.renderFriendsList();
+                this.updateUI();
+                this.showNotification('Squad information refreshed!', 'success');
+            }
+
             addFriend() {
                 console.log('addFriend method called');
                 // Create custom modal instead of using prompt()
@@ -2172,9 +2194,16 @@
                 const result = this.userManager.createSquad(currentUser.username, squadMembers);
                 if (result.success) {
                     this.showNotification(result.message, 'success');
+                    
+                    // Force refresh of all data and UI
                     this.loadSquadInfo();
+                    this.loadFriends();
                     this.renderSquadInfo();
+                    this.renderFriendsList();
                     this.updateUI();
+                    
+                    // Trigger a storage event to notify other tabs/windows
+                    this.triggerStorageSync();
                 } else {
                     this.showNotification(result.message, 'error');
                 }
@@ -2312,6 +2341,7 @@
                         <h3>⚔ Your Squad</h3>
                         <div class="no-squad">No squad created yet</div>
                         <button class="btn btn-secondary" onclick="game.createSquad()">Create Squad</button>
+                        <button class="btn btn-primary" onclick="game.refreshSquadInfo()" style="margin-left: 10px;">🔄 Refresh</button>
                     `;
                     return;
                 }
@@ -2319,6 +2349,7 @@
                 let html = `
                     <h3>⚔ Your Squad (${this.squadInfo.size} members)</h3>
                     <div class="squad-leader">👑 Leader: ${this.squadInfo.leader}</div>
+                    <button class="btn btn-primary" onclick="game.refreshSquadInfo()" style="margin: 10px 0;">🔄 Refresh Squad Info</button>
                 `;
 
                 this.squadInfo.members.forEach(member => {
@@ -2504,6 +2535,12 @@
                                 game.renderFriendsList();
                                 game.renderSquadInfo();
                                 game.updateUI();
+                                
+                                // Show notification about squad changes
+                                const currentUser = userManager.getCurrentUser();
+                                if (currentUser && game.squadInfo && game.squadInfo.size > 0) {
+                                    game.showNotification('Squad information updated!', 'success');
+                                }
                             }
                         } catch (syncErr) {
                             console.error('[SYNC] Error reloading users', syncErr);
@@ -2673,6 +2710,20 @@
                     }
                 }
             }, 5000);
+
+            // Also refresh squad info every 10 seconds regardless of game state
+            setInterval(() => {
+                if (game) {
+                    try {
+                        game.loadSquadInfo();
+                        game.loadFriends();
+                        game.renderSquadInfo();
+                        game.renderFriendsList();
+                    } catch (error) {
+                        console.error('Error refreshing squad info:', error);
+                    }
+                }
+            }, 10000);
         }
 
         function showNotification(message, type) {
