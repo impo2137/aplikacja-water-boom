@@ -1991,7 +1991,29 @@
                     this.currentPlayer.lat = position.coords.latitude;
                     this.currentPlayer.lon = position.coords.longitude;
                     this.currentPlayer.lastSeen = new Date().toISOString();
+                    
+                    // Save the updated location to user data
+                    this.saveGameState();
+                    
+                    // Update targets if they are squad members with actual locations
+                    this.updateTargetLocations();
+                    
                     this.updateMap();
+                }
+            }
+
+            updateTargetLocations() {
+                // Update target locations if they are squad members with actual locations
+                if (this.squadInfo && this.targets.size > 0) {
+                    this.targets.forEach((target, playerName) => {
+                        const memberUser = this.userManager.users.get(target.name);
+                        if (memberUser && memberUser.currentPlayer) {
+                            // Update target location with actual player location
+                            target.lat = memberUser.currentPlayer.lat;
+                            target.lon = memberUser.currentPlayer.lon;
+                            target.lastSeen = memberUser.currentPlayer.lastSeen;
+                        }
+                    });
                 }
             }
 
@@ -2176,14 +2198,31 @@
                 
                 // Only assign targets if we have squad members who are also playing
                 if (this.squadInfo) {
+                    const currentUsername = this.userManager.getCurrentUser().username;
                     const availableTargets = this.squadInfo.members
-                        .filter(member => member.isOnline && member.username !== this.userManager.getCurrentUser().username)
-                        .map(member => ({
-                            name: member.username,
-                            lat: this.generateRandomLocation().lat,
-                            lon: this.generateRandomLocation().lon,
-                            lastSeen: new Date().toISOString()
-                        }));
+                        .filter(member => member.isOnline && member.username !== currentUsername)
+                        .map(member => {
+                            // Get the actual player data for this member
+                            const memberUser = this.userManager.users.get(member.username);
+                            if (memberUser && memberUser.currentPlayer) {
+                                // Use actual player location if available
+                                return {
+                                    name: member.username,
+                                    lat: memberUser.currentPlayer.lat,
+                                    lon: memberUser.currentPlayer.lon,
+                                    lastSeen: memberUser.currentPlayer.lastSeen || new Date().toISOString()
+                                };
+                            } else {
+                                // Fallback to random location if no actual location data
+                                const randomLoc = this.generateRandomLocation();
+                                return {
+                                    name: member.username,
+                                    lat: randomLoc.lat,
+                                    lon: randomLoc.lon,
+                                    lastSeen: new Date().toISOString()
+                                };
+                            }
+                        });
                     
                     if (availableTargets.length > 0) {
                         const shuffled = availableTargets.sort(() => Math.random() - 0.5);
@@ -2624,6 +2663,7 @@
             setInterval(() => {
                 if (game && game.gameActive) {
                     try {
+                        game.updateTargetLocations(); // Update target locations
                         game.renderFriendsList();
                         game.renderSquadInfo(); // New: update squad info
                         game.renderTargetInfo();
